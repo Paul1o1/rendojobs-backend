@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const port = 5000; // You can choose any port
+const port = process.env.PORT || 5000; // Use port from environment or default to 5000
 
 const corsOptions = {
   origin: "https://rendojobs-frontend.vercel.app", // Your Vercel frontend URL
