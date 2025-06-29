@@ -6,7 +6,7 @@ const { createHmac, timingSafeEqual } = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-const port = process.env.PORT || 5000; // Use port from environment or default to 5000
+const port = process.env.PORT || 5000;
 
 // Helper function to validate Telegram data
 function validateTelegramData(initData, botToken) {
@@ -29,10 +29,7 @@ function validateTelegramData(initData, botToken) {
     .digest("hex");
 
   if (calculatedHash !== hash) {
-    // For debugging, it can be useful to see why validation failed
     console.error("Hash validation failed.");
-    console.error("Received hash:", hash);
-    console.error("Calculated hash:", calculatedHash);
     return null;
   }
 
@@ -46,35 +43,32 @@ function validateTelegramData(initData, botToken) {
   }
 }
 
-// Configure Multer for file uploads (in-memory storage for now)
+// Configure Multer and JSON middleware
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-
-// Middleware to parse JSON bodies
 app.use(express.json());
 
-// Initialize Supabase client
+// Initialize Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// SECRETS - These must be set in your Render environment variables
+// Secrets from environment
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Allow all origins for debugging purposes.
-// We should restrict this to the Vercel URL in production.
+// Use CORS
 app.use(cors());
 
+// Root endpoint
 app.get("/", (req, res) => {
   res.send("Hello from the backend!");
 });
 
-// Endpoint for Telegram Login
+// Telegram Login Endpoint
 app.post("/api/telegram-login", async (req, res) => {
   try {
     const { initData } = req.body;
-
     if (!initData) {
       return res
         .status(400)
@@ -83,7 +77,7 @@ app.post("/api/telegram-login", async (req, res) => {
 
     if (!TELEGRAM_BOT_TOKEN || !JWT_SECRET) {
       console.error(
-        "Missing TELEGRAM_BOT_TOKEN or JWT_SECRET in environment variables."
+        "Server configuration error: Missing required environment variables."
       );
       return res
         .status(500)
@@ -91,7 +85,6 @@ app.post("/api/telegram-login", async (req, res) => {
     }
 
     const userData = validateTelegramData(initData, TELEGRAM_BOT_TOKEN);
-
     if (!userData) {
       return res
         .status(403)
@@ -99,19 +92,12 @@ app.post("/api/telegram-login", async (req, res) => {
     }
 
     const { id: telegram_id, first_name, last_name } = userData;
-
-    // Check if user exists
-    const { data: existingUser, error: fetchError } = await supabase
+    let { data: user } = await supabase
       .from("jobseekers")
       .select("*")
       .eq("telegram_id", telegram_id.toString())
-      .limit(1);
+      .single();
 
-    if (fetchError) throw fetchError;
-
-    let user = existingUser.length > 0 ? existingUser[0] : null;
-
-    // If user doesn't exist, create them
     if (!user) {
       const { data: newUser, error: insertError } = await supabase
         .from("jobseekers")
@@ -119,7 +105,6 @@ app.post("/api/telegram-login", async (req, res) => {
           telegram_id: telegram_id.toString(),
           first_name: first_name || "",
           last_name: last_name || "",
-          // Add other default fields if necessary
         })
         .select()
         .single();
@@ -128,7 +113,6 @@ app.post("/api/telegram-login", async (req, res) => {
       user = newUser;
     }
 
-    // User is validated, create a JWT
     const token = jwt.sign(
       {
         id: user.id,
@@ -141,12 +125,12 @@ app.post("/api/telegram-login", async (req, res) => {
 
     res.json({ success: true, token });
   } catch (error) {
-    console.error("Telegram login error:", error);
+    console.error("Telegram login error:", error.message);
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
 
-// Endpoint for job seeker registration with CV upload
+// Job Seeker Registration Endpoint
 app.post("/api/jobseekers/register", upload.single("cv"), async (req, res) => {
   try {
     const {
@@ -234,6 +218,40 @@ app.post("/api/jobseekers/register", upload.single("cv"), async (req, res) => {
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
+  }
+});
+
+// Protected route to get user data
+app.get("/api/protected", (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res
+        .status(401)
+        .json({
+          success: false,
+          error: "Authorization header is missing or invalid.",
+        });
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Token is missing." });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err) {
+        return res
+          .status(403)
+          .json({ success: false, error: "Token is not valid." });
+      }
+      res.json({ success: true, user });
+    });
+  } catch (error) {
+    console.error("Protected route error:", error.message);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
 
