@@ -62,12 +62,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const corsOptions = {
-  origin: "https://rendojobs-frontend.vercel.app", // Your Vercel frontend URL
-  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
-};
-
-app.use(cors(corsOptions));
+// Allow all origins for debugging purposes.
+// We should restrict this to the Vercel URL in production.
+app.use(cors());
 
 app.get("/", (req, res) => {
   res.send("Hello from the backend!");
