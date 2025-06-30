@@ -61,6 +61,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // Configure CORS to allow requests from your frontend
 const corsOptions = {
   origin: "https://rendojobs-frontend.vercel.app",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: "Content-Type, Authorization",
   optionsSuccessStatus: 200, // For legacy browser support
 };
 app.use(cors(corsOptions));
