@@ -87,36 +87,26 @@ app.get("/", (req, res) => {
 
 // Telegram Login Endpoint
 app.post("/api/telegram-login", async (req, res) => {
-  console.log("Entered /api/telegram-login handler.");
   try {
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
     const { initData } = req.body;
 
     if (!initData) {
-      console.error("Validation FAIL: Missing initData in request body.");
       return res
         .status(400)
         .json({ success: false, error: "Missing initData" });
     }
-    console.log("initData received successfully. Validating...");
 
     const userData = validateTelegramData(initData, TELEGRAM_BOT_TOKEN);
     if (!userData) {
-      console.error("Validation FAIL: Invalid Telegram data (hash mismatch).");
       return res
         .status(403)
         .json({ success: false, error: "Invalid Telegram data" });
     }
-    console.log("Validation successful. User data:", userData);
 
     const { id: telegram_id, first_name, last_name } = userData;
     let user;
 
     try {
-      console.log(
-        `Attempting to find or create user with telegram_id: ${telegram_id}`
-      );
-
       let { data: existingUser } = await supabase
         .from("users") // Use the standard 'users' table
         .select("*")
@@ -124,12 +114,8 @@ app.post("/api/telegram-login", async (req, res) => {
         .single();
 
       if (existingUser) {
-        console.log("User found in database.");
         user = existingUser;
       } else {
-        console.log(
-          "User not found. Attempting to create new user in 'users' table."
-        );
         const { data: newUser, error: insertError } =
           await supabase.auth.admin.createUser({
             email: `${telegram_id}@telegram.fake`, // Create a fake email
@@ -149,7 +135,6 @@ app.post("/api/telegram-login", async (req, res) => {
           throw new Error("Failed to create new auth user.");
         }
 
-        console.log("New auth user created successfully.");
         user = newUser.user; // The user object is nested
       }
     } catch (dbError) {
@@ -159,7 +144,6 @@ app.post("/api/telegram-login", async (req, res) => {
         .json({ success: false, error: "Database operation failed." });
     }
 
-    console.log("User processing complete. Generating token.");
     const token = jwt.sign(
       {
         id: user.id,
