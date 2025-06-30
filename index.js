@@ -6,6 +6,14 @@ const { createHmac, timingSafeEqual } = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const app = express();
+
+// VERBOSE REQUEST LOGGER - Logs every incoming request
+app.use((req, res, next) => {
+  console.log(`--> [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log("  Origin:", req.headers.origin);
+  next();
+});
+
 const port = process.env.PORT || 5000;
 
 // Helper function to validate Telegram data
