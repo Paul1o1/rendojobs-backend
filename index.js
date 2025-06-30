@@ -2,25 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
 const multer = require("multer");
-const { createHmac, timingSafeEqual } = require("crypto");
+const { createHmac } = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-
-// Middleware to normalize URL and remove double slashes
-app.use((req, res, next) => {
-  if (req.url.includes("//")) {
-    req.url = req.url.replace(/\/+/g, "/");
-  }
-  next();
-});
-
-// VERBOSE REQUEST LOGGER - Logs every incoming request
-app.use((req, res, next) => {
-  console.log(`--> [${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log("  Origin:", req.headers.origin);
-  next();
-});
 
 const port = process.env.PORT || 5000;
 
