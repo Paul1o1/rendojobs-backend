@@ -98,50 +98,66 @@ app.post("/api/telegram-login", async (req, res) => {
         .status(400)
         .json({ success: false, error: "Missing initData" });
     }
-    console.log("initData received successfully.");
-
-    if (!TELEGRAM_BOT_TOKEN || !JWT_SECRET) {
-      console.error(
-        "Server configuration error: Missing required environment variables."
-      );
-      return res
-        .status(500)
-        .json({ success: false, error: "Server configuration error." });
-    }
+    console.log("initData received successfully. Validating...");
 
     const userData = validateTelegramData(initData, TELEGRAM_BOT_TOKEN);
     if (!userData) {
+      console.error("Validation FAIL: Invalid Telegram data (hash mismatch).");
       return res
         .status(403)
         .json({ success: false, error: "Invalid Telegram data" });
     }
+    console.log("Validation successful. User data:", userData);
 
     const { id: telegram_id, first_name, last_name } = userData;
-    let { data: user } = await supabase
-      .from("jobseekers")
-      .select("*")
-      .eq("telegram_id", telegram_id.toString())
-      .single();
+    let user;
 
-    if (!user) {
-      const { data: newUser, error: insertError } = await supabase
+    try {
+      console.log(
+        `Attempting to find or create user with telegram_id: ${telegram_id}`
+      );
+
+      let { data: existingUser } = await supabase
         .from("jobseekers")
-        .insert({
-          telegram_id: telegram_id.toString(),
-          first_name: first_name || "New",
-          last_name: last_name || "User",
-          email: `${telegram_id}@telegram-user.com`,
-        })
-        .select()
+        .select("*")
+        .eq("telegram_id", telegram_id.toString())
         .single();
 
-      if (insertError) {
-        console.error("Database insert error:", insertError);
-        throw insertError;
+      if (existingUser) {
+        console.log("User found in database.");
+        user = existingUser;
+      } else {
+        console.log("User not found. Attempting to create new user.");
+        const { data: newUser, error: insertError } = await supabase
+          .from("jobseekers")
+          .insert({
+            telegram_id: telegram_id.toString(),
+            first_name: first_name || "New",
+            last_name: last_name || "User",
+            email: `${telegram_id}@telegram-user.com`,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error(
+            "CRITICAL: Database insert operation failed.",
+            insertError
+          );
+          throw new Error("Failed to insert new user into database.");
+        }
+
+        console.log("New user created successfully.");
+        user = newUser;
       }
-      user = newUser;
+    } catch (dbError) {
+      console.error("CRITICAL: A database error occurred.", dbError);
+      return res
+        .status(500)
+        .json({ success: false, error: "Database operation failed." });
     }
 
+    console.log("User processing complete. Generating token.");
     const token = jwt.sign(
       {
         id: user.id,
