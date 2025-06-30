@@ -178,17 +178,25 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ success: false, error: "No token provided" });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      console.error("Auth FAIL: JWT verification failed.", err);
-      return res
-        .status(403)
-        .json({ success: false, error: "Token is not valid" });
-    }
-    console.log("Auth SUCCESS: Token decoded.", decoded);
-    req.user = decoded;
-    next();
-  });
+  try {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+      if (err) {
+        console.error("Auth FAIL: JWT verification callback error.", err);
+        return res
+          .status(403)
+          .json({ success: false, error: "Token is not valid" });
+      }
+      console.log("Auth SUCCESS: Token decoded.", decoded);
+      req.user = decoded;
+      next();
+    });
+  } catch (error) {
+    console.error(
+      "Auth FAIL: JWT verification threw a synchronous error.",
+      error
+    );
+    return res.status(403).json({ success: false, error: "Malformed token" });
+  }
 };
 
 // Protected Route to get user data
