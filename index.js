@@ -118,37 +118,39 @@ app.post("/api/telegram-login", async (req, res) => {
       );
 
       let { data: existingUser } = await supabase
-        .from("jobseekers")
+        .from("users") // Use the standard 'users' table
         .select("*")
-        .eq("telegram_id", telegram_id.toString())
+        .eq("raw_user_meta_data->>telegram_id", telegram_id.toString()) // Check inside the metadata
         .single();
 
       if (existingUser) {
         console.log("User found in database.");
         user = existingUser;
       } else {
-        console.log("User not found. Attempting to create new user.");
-        const { data: newUser, error: insertError } = await supabase
-          .from("jobseekers")
-          .insert({
-            telegram_id: telegram_id.toString(),
-            first_name: first_name || "New",
-            last_name: last_name || "User",
-            email: `${telegram_id}@telegram-user.com`,
-          })
-          .select()
-          .single();
+        console.log(
+          "User not found. Attempting to create new user in 'users' table."
+        );
+        const { data: newUser, error: insertError } =
+          await supabase.auth.admin.createUser({
+            email: `${telegram_id}@telegram.fake`, // Create a fake email
+            email_confirm: true,
+            user_metadata: {
+              first_name: first_name,
+              last_name: last_name,
+              telegram_id: telegram_id.toString(),
+            },
+          });
 
         if (insertError) {
           console.error(
-            "CRITICAL: Database insert operation failed.",
+            "CRITICAL: Supabase auth user creation failed.",
             insertError
           );
-          throw new Error("Failed to insert new user into database.");
+          throw new Error("Failed to create new auth user.");
         }
 
-        console.log("New user created successfully.");
-        user = newUser;
+        console.log("New auth user created successfully.");
+        user = newUser.user; // The user object is nested
       }
     } catch (dbError) {
       console.error("CRITICAL: A database error occurred.", dbError);
@@ -161,8 +163,8 @@ app.post("/api/telegram-login", async (req, res) => {
     const token = jwt.sign(
       {
         id: user.id,
-        telegram_id: user.telegram_id,
-        name: `${user.first_name} ${user.last_name}`.trim(),
+        telegram_id: user.user_metadata.telegram_id,
+        name: `${user.user_metadata.first_name} ${user.user_metadata.last_name}`.trim(),
       },
       JWT_SECRET,
       { expiresIn: "7d" }
