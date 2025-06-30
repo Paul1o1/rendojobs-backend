@@ -124,8 +124,11 @@ app.post("/api/telegram-login", async (req, res) => {
         .single();
 
       if (existingUser) {
-        console.log("User found in database.");
-        user = existingUser;
+        console.log("User found in database. Normalizing user object.");
+        user = {
+          ...existingUser,
+          user_metadata: existingUser.raw_user_meta_data || {},
+        };
       } else {
         console.log(
           "User not found. Attempting to create new user in 'users' table."
