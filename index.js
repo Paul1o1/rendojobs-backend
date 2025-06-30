@@ -57,8 +57,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Use CORS
-app.use(cors());
+// Configure CORS to allow requests from your frontend
+const corsOptions = {
+  origin: "https://rendojobs-frontend.vercel.app",
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+app.use(cors(corsOptions));
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -226,12 +230,10 @@ app.get("/api/protected", (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          error: "Authorization header is missing or invalid.",
-        });
+      return res.status(401).json({
+        success: false,
+        error: "Authorization header is missing or invalid.",
+      });
     }
 
     const token = authHeader.split(" ")[1];
