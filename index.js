@@ -7,6 +7,14 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 
+// Middleware to normalize URL and remove double slashes
+app.use((req, res, next) => {
+  if (req.url.includes("//")) {
+    req.url = req.url.replace(/\/+/g, "/");
+  }
+  next();
+});
+
 // VERBOSE REQUEST LOGGER - Logs every incoming request
 app.use((req, res, next) => {
   console.log(`--> [${new Date().toISOString()}] ${req.method} ${req.url}`);
