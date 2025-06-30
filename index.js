@@ -165,6 +165,52 @@ app.post("/api/telegram-login", async (req, res) => {
   }
 });
 
+// Middleware to verify JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token == null) return res.sendStatus(401); // if there isn't any token
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("JWT Verification Error:", err);
+      return res.sendStatus(403); // if token is no longer valid
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
+// Protected Route to get user data
+app.get("/api/protected", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      console.error("Supabase fetch user error:", error);
+      throw new Error("User not found");
+    }
+
+    // Normalize the user object to match frontend expectations
+    const normalizedUser = {
+      id: user.id,
+      email: user.email,
+      ...user.raw_user_meta_data, // Spread the metadata
+    };
+
+    res.json({ success: true, user: normalizedUser });
+  } catch (error) {
+    console.error("Error in /api/protected:", error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+});
+
 // Job Seeker Registration Endpoint
 app.post("/api/jobseekers/register", upload.single("cv"), async (req, res) => {
   try {
@@ -253,38 +299,6 @@ app.post("/api/jobseekers/register", upload.single("cv"), async (req, res) => {
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
-  }
-});
-
-// Protected route to get user data
-app.get("/api/protected", (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        error: "Authorization header is missing or invalid.",
-      });
-    }
-
-    const token = authHeader.split(" ")[1];
-    if (!token) {
-      return res
-        .status(401)
-        .json({ success: false, error: "Token is missing." });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-      if (err) {
-        return res
-          .status(403)
-          .json({ success: false, error: "Token is not valid." });
-      }
-      res.json({ success: true, user });
-    });
-  } catch (error) {
-    console.error("Protected route error:", error.message);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
 
