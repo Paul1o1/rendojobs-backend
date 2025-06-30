@@ -64,6 +64,7 @@ const corsOptions = {
   optionsSuccessStatus: 200, // For legacy browser support
 };
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Enable pre-flight for all routes
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -167,16 +168,24 @@ app.post("/api/telegram-login", async (req, res) => {
 
 // Middleware to verify JWT
 const authenticateToken = (req, res, next) => {
+  console.log("Authenticating token for:", req.path);
   const authHeader = req.headers["authorization"];
+  console.log("Auth Header:", authHeader);
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (token == null) return res.sendStatus(401); // if there isn't any token
+  if (token == null) {
+    console.error("Auth FAIL: No token provided.");
+    return res.status(401).json({ success: false, error: "No token provided" });
+  }
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
-      console.error("JWT Verification Error:", err);
-      return res.sendStatus(403); // if token is no longer valid
+      console.error("Auth FAIL: JWT verification failed.", err);
+      return res
+        .status(403)
+        .json({ success: false, error: "Token is not valid" });
     }
+    console.log("Auth SUCCESS: Token decoded.", decoded);
     req.user = decoded;
     next();
   });
