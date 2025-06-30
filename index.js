@@ -64,10 +64,10 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 app.use(express.json());
 
-// Initialize Supabase
+// Initialize Supabase with the admin service role key
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Secrets from environment
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
