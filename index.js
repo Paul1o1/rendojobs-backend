@@ -79,13 +79,18 @@ app.get("/", (req, res) => {
 
 // Telegram Login Endpoint
 app.post("/api/telegram-login", async (req, res) => {
+  console.log("Entered /api/telegram-login handler.");
   try {
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
     const { initData } = req.body;
+
     if (!initData) {
+      console.error("Validation FAIL: Missing initData in request body.");
       return res
         .status(400)
         .json({ success: false, error: "Missing initData" });
     }
+    console.log("initData received successfully.");
 
     if (!TELEGRAM_BOT_TOKEN || !JWT_SECRET) {
       console.error(
