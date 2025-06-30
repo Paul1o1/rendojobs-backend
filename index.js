@@ -128,13 +128,17 @@ app.post("/api/telegram-login", async (req, res) => {
         .from("jobseekers")
         .insert({
           telegram_id: telegram_id.toString(),
-          first_name: first_name || "",
-          last_name: last_name || "",
+          first_name: first_name || "New",
+          last_name: last_name || "User",
+          email: `${telegram_id}@telegram-user.com`,
         })
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Database insert error:", insertError);
+        throw insertError;
+      }
       user = newUser;
     }
 
@@ -150,7 +154,7 @@ app.post("/api/telegram-login", async (req, res) => {
 
     res.json({ success: true, token });
   } catch (error) {
-    console.error("Telegram login error:", error.message);
+    console.error("Full Telegram login error object:", error);
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
