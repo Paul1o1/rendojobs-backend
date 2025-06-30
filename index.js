@@ -202,7 +202,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Protected Route to get user data
-app.get("/api/protected", authenticateToken, async (req, res) => {
+app.get("/api/user-profile", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const { data: user, error } = await supabase
@@ -225,7 +225,7 @@ app.get("/api/protected", authenticateToken, async (req, res) => {
 
     res.json({ success: true, user: normalizedUser });
   } catch (error) {
-    console.error("Error in /api/protected:", error);
+    console.error("Error in /api/user-profile:", error);
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
