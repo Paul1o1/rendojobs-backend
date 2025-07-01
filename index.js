@@ -321,6 +321,11 @@ app.post("/api/jobseekers/register", upload.single("cv"), async (req, res) => {
   }
 });
 
+// Add a ping endpoint for frontend-backend connectivity testing
+app.get("/api/ping", (req, res) => {
+  res.json({ ok: true, message: "pong from backend" });
+});
+
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);
 });
